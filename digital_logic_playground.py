@@ -113,7 +113,8 @@ class LogicPlayground(tk.Tk):
         left.pack_propagate(False) # Prevent frame from shrinking
 
         ttk.Label(left, text="Components", font=("Arial", 12, "bold")).pack(pady=6)
-        for label in ["Input", "Output", "AND", "OR", "NOT", "XOR"]:
+        # --- ADDED: New gates to the button list ---
+        for label in ["Input", "Output", "AND", "OR", "NOT", "XOR", "NAND", "NOR", "XNOR"]:
             cmd = lambda l=label: self.add_component(l)
             ttk.Button(left, text=f"Add {label}", command=cmd).pack(fill=tk.X, pady=3)
 
@@ -498,6 +499,14 @@ class LogicPlayground(tk.Tk):
                     g.output = not inputs[0]
                 elif g.type == "XOR":
                     g.output = bool(inputs[0]) ^ bool(inputs[1])
+                # --- ADDED: Logic for new gates ---
+                elif g.type == "NAND":
+                    g.output = not all(inputs)
+                elif g.type == "NOR":
+                    g.output = not any(inputs)
+                elif g.type == "XNOR":
+                    # XNOR is true if inputs are equal
+                    g.output = bool(inputs[0]) == bool(inputs[1])
         
         # --- Final Update ---
         # Wires and Outputs may have changed, so do a final value update
@@ -547,6 +556,7 @@ if __name__ == "__main__":
         app.clear_all() # Clear partial circuit on error
 
     app.mainloop()
+
 
 
 
