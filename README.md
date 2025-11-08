@@ -42,7 +42,8 @@ The project demonstrates understanding of:
 
 ## Example Circuit
 Here is an example of a full adder circuit built usin this tool using only NAND gates. A full adder circuit adds 2 binary digits together, with a potential carry over from a previous addition stage. Full adders play a crucial role in modern computing, as the ALU (Arithmetic Logic Unit) uses full adder circuits to create addresses in memory and help the Program Counter move to the next instruction.
-![Demo of the logic simulator](./example.png)
+
+![Demo of the logic simulator](Example.png)
 
 ## How to Run
 
