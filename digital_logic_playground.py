@@ -284,7 +284,8 @@ class LogicPlayground(tk.Tk):
         self.click_start_pos = (event.x, event.y)
         
         # Check for gate drag
-        obj, part = self.find_clicked_object(event)
+        # --- MODIFIED: Pass x,y instead of event ---
+        obj, part = self.find_clicked_object(event.x, event.y)
         if isinstance(obj, Gate) and part == "body":
             self.drag_target = obj
             self.drag_start_x = event.x - obj.x
@@ -302,6 +303,27 @@ class LogicPlayground(tk.Tk):
             self.drag_target.y = event.y - self.drag_start_y
             self.redraw()
             return
+
+        # --- ADDED: Check if we should START a drag (for Inputs/Outputs) ---
+        if self.click_start_pos: # Check if a click has started
+            dist = math.hypot(event.x - self.click_start_pos[0], 
+                              event.y - self.click_start_pos[1])
+            
+            if dist > self.CLICK_DRAG_THRESHOLD:
+                # It's a drag! Find out what we're dragging.
+                # Find object at the START of the click
+                obj, part = self.find_clicked_object(self.click_start_pos[0], self.click_start_pos[1]) 
+                
+                if part == "body" and isinstance(obj, (InputNode, OutputNode)):
+                    # Start dragging this Input/Output node
+                    self.drag_target = obj
+                    self.drag_start_x = event.x - obj.x
+                    self.drag_start_y = event.y - obj.y
+                    self.click_start_pos = None # Consume the click
+                    self.cancel_connection()    # Cancel any wiring
+                    self.redraw()
+                    return
+        # --- END ADDED SECTION ---
 
         # --- Handle Wiring Preview ---
         if self.connect_source_obj:
@@ -335,7 +357,8 @@ class LogicPlayground(tk.Tk):
                 return
             
             # --- It was a valid CLICK ---
-            obj, part = self.find_clicked_object(event)
+            # --- MODIFIED: Pass x,y instead of event ---
+            obj, part = self.find_clicked_object(event.x, event.y)
 
             # 1. Handle second click (completing a connection)
             if self.connect_source_obj:
@@ -370,6 +393,18 @@ class LogicPlayground(tk.Tk):
                 self.redraw() # To show highlight
                 return
             
+            # --- ADDED: Check for wire deletion ---
+            if obj is None: # Only check for wires if we didn't click a component
+                clicked_wire = self.find_clicked_wire(event.x, event.y)
+                if clicked_wire:
+                    # Confirm deletion
+                    if messagebox.askyesno("Delete Wire", "Are you sure you want to delete this wire?"):
+                        del self.wires[clicked_wire.id]
+                        self.evaluate_circuit()
+                    self.cancel_connection() # Always cancel any pending wire
+                    return
+            # --- END ADDED SECTION ---
+
             # 4. Handle clicking empty space
             if obj is None:
                 self.cancel_connection()
@@ -398,12 +433,13 @@ class LogicPlayground(tk.Tk):
     # Helper Functions
     # -------------------------
 
-    def find_clicked_object(self, event):
+    # --- MODIFIED: Changed signature to accept x,y ---
+    def find_clicked_object(self, x, y):
         """
         Finds the object (and part) under the cursor.
         Returns (object, "part_name") or (None, None).
         """
-        x, y = event.x, event.y
+        # x, y are now passed directly
         
         # Check Gates (and their pins)
         for g in self.gates.values():
@@ -431,6 +467,47 @@ class LogicPlayground(tk.Tk):
                 return (o, "body")
 
         return (None, None)
+
+    # --- ADDED: New helper function to find clicked wires ---
+    def find_clicked_wire(self, x, y):
+        """Checks if a click (x, y) is on an existing wire."""
+        CLICK_RADIUS = 6 # How close the click must be
+        for w in self.wires.values():
+            src = self.elements.get(w.source_id)
+            tgt = self.elements.get(w.target_id)
+            if not src or not tgt:
+                continue
+
+            sx, sy = src.get_output_coords()
+            tx, ty = tgt.get_pin_coords(w.target_pin_index)
+
+            # Calculate distance from point (x,y) to line segment (sx,sy) -> (tx,ty)
+            L_sq = (tx - sx)**2 + (ty - sy)**2 # Squared length of the wire
+            if L_sq == 0:
+                # Wire is a zero-length "point"
+                dist = math.hypot(x - sx, y - sy)
+            else:
+                # Project point (x,y) onto the infinite line
+                # t is the projection factor (0=start, 1=end)
+                t = ((x - sx) * (tx - sx) + (y - sy) * (ty - sy)) / L_sq
+                
+                if t < 0:
+                    # Closest point is the start (sx, sy)
+                    dist = math.hypot(x - sx, y - sy)
+                elif t > 1:
+                    # Closest point is the end (tx, ty)
+                    dist = math.hypot(x - tx, y - ty)
+                else:
+                    # Closest point is on the segment
+                    proj_x = sx + t * (tx - sx)
+                    proj_y = sy + t * (ty - sy)
+                    dist = math.hypot(x - proj_x, y - proj_y)
+            
+            if dist <= CLICK_RADIUS:
+                return w # Found a wire
+
+        return None
+    # --- END ADDED SECTION ---
 
     # -------------------------
     # Wiring & Evaluation
@@ -556,6 +633,8 @@ if __name__ == "__main__":
         app.clear_all() # Clear partial circuit on error
 
     app.mainloop()
+
+
 
 
 
