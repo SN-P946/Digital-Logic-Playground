@@ -113,7 +113,6 @@ class LogicPlayground(tk.Tk):
         left.pack_propagate(False) # Prevent frame from shrinking
 
         ttk.Label(left, text="Components", font=("Arial", 12, "bold")).pack(pady=6)
-        # --- ADDED: New gates to the button list ---
         for label in ["Input", "Output", "AND", "OR", "NOT", "XOR", "NAND", "NOR", "XNOR"]:
             cmd = lambda l=label: self.add_component(l)
             ttk.Button(left, text=f"Add {label}", command=cmd).pack(fill=tk.X, pady=3)
@@ -284,7 +283,6 @@ class LogicPlayground(tk.Tk):
         self.click_start_pos = (event.x, event.y)
         
         # Check for gate drag
-        # --- MODIFIED: Pass x,y instead of event ---
         obj, part = self.find_clicked_object(event.x, event.y)
         if isinstance(obj, Gate) and part == "body":
             self.drag_target = obj
@@ -304,7 +302,6 @@ class LogicPlayground(tk.Tk):
             self.redraw()
             return
 
-        # --- ADDED: Check if we should START a drag (for Inputs/Outputs) ---
         if self.click_start_pos: # Check if a click has started
             dist = math.hypot(event.x - self.click_start_pos[0], 
                               event.y - self.click_start_pos[1])
@@ -323,7 +320,6 @@ class LogicPlayground(tk.Tk):
                     self.cancel_connection()    # Cancel any wiring
                     self.redraw()
                     return
-        # --- END ADDED SECTION ---
 
         # --- Handle Wiring Preview ---
         if self.connect_source_obj:
@@ -357,14 +353,12 @@ class LogicPlayground(tk.Tk):
                 return
             
             # --- It was a valid CLICK ---
-            # --- MODIFIED: Pass x,y instead of event ---
             obj, part = self.find_clicked_object(event.x, event.y)
 
             # 1. Handle second click (completing a connection)
             if self.connect_source_obj:
                 if (isinstance(obj, Gate) and "pin_in" in part) or (isinstance(obj, OutputNode) and part == "body"):
                     # Valid target!
-                    # --- BUG FIX 1: Corrected variable name from 'pin_.index' to 'pin_index' ---
                     pin_index = int(part.split('_')[-1]) if isinstance(obj, Gate) else 0
                     self.add_wire(self.connect_source_obj, obj, pin_index)
                 
@@ -372,10 +366,6 @@ class LogicPlayground(tk.Tk):
                 self.cancel_connection()
                 self.evaluate_circuit()
                 return
-
-            # --- *** LOGIC FIX HERE *** ---
-            # The logic below was flawed. It has been restructured
-            # to handle toggling vs. starting a new wire.
 
             # 2. Handle toggling an Input
             if isinstance(obj, InputNode) and part == "body":
@@ -393,7 +383,6 @@ class LogicPlayground(tk.Tk):
                 self.redraw() # To show highlight
                 return
             
-            # --- ADDED: Check for wire deletion ---
             if obj is None: # Only check for wires if we didn't click a component
                 clicked_wire = self.find_clicked_wire(event.x, event.y)
                 if clicked_wire:
@@ -403,7 +392,6 @@ class LogicPlayground(tk.Tk):
                         self.evaluate_circuit()
                     self.cancel_connection() # Always cancel any pending wire
                     return
-            # --- END ADDED SECTION ---
 
             # 4. Handle clicking empty space
             if obj is None:
@@ -433,13 +421,11 @@ class LogicPlayground(tk.Tk):
     # Helper Functions
     # -------------------------
 
-    # --- MODIFIED: Changed signature to accept x,y ---
-    def find_clicked_object(self, x, y):
-        """
-        Finds the object (and part) under the cursor.
-        Returns (object, "part_name") or (None, None).
-        """
-        # x, y are now passed directly
+
+        
+      #  Finds the object (and part) under the cursor.
+      #  Returns (object, "part_name") or (None, None).
+        
         
         # Check Gates (and their pins)
         for g in self.gates.values():
@@ -468,7 +454,6 @@ class LogicPlayground(tk.Tk):
 
         return (None, None)
 
-    # --- ADDED: New helper function to find clicked wires ---
     def find_clicked_wire(self, x, y):
         """Checks if a click (x, y) is on an existing wire."""
         CLICK_RADIUS = 6 # How close the click must be
@@ -507,7 +492,6 @@ class LogicPlayground(tk.Tk):
                 return w # Found a wire
 
         return None
-    # --- END ADDED SECTION ---
 
     # -------------------------
     # Wiring & Evaluation
@@ -576,7 +560,6 @@ class LogicPlayground(tk.Tk):
                     g.output = not inputs[0]
                 elif g.type == "XOR":
                     g.output = bool(inputs[0]) ^ bool(inputs[1])
-                # --- ADDED: Logic for new gates ---
                 elif g.type == "NAND":
                     g.output = not all(inputs)
                 elif g.type == "NOR":
@@ -585,7 +568,7 @@ class LogicPlayground(tk.Tk):
                     # XNOR is true if inputs are equal
                     g.output = bool(inputs[0]) == bool(inputs[1])
         
-        # --- Final Update ---
+
         # Wires and Outputs may have changed, so do a final value update
         for w in self.wires.values():
             w.value = self.get_element_output_value(w.source_id)
@@ -633,6 +616,7 @@ if __name__ == "__main__":
         app.clear_all() # Clear partial circuit on error
 
     app.mainloop()
+
 
 
 
